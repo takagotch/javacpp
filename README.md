@@ -95,14 +95,118 @@ public class Processor {
   }
 }
 
+#include <iostream>
+
+static inline void process(void *buffer, int size) {
+  std::cout << "Processing in C++..." << std::endl;
+}
 
 
+import org.bytedeco.javacpp.*;
+import org.bytedeco.javacpp.annotation.*;
+
+@Platform(include="Processor.h")
+public class Proceesor {
+  static { Loader.load(); }
+  
+  public static native void process(java.nio.Buffer buffer, int size);
+  
+  public static void main(String[] args) {
+    process(null, 0);
+  }
+}
+
+#include <iostream>
+#include "jniFoo.h"
+
+int main() {
+  JavaCPP_init(0, NULL);
+  try {
+    foo(6,7);
+  } catch (std::execption &e) {
+    std::cout << e.what() << std::endl;
+  }
+  JavaCPP_uninit();
+}
+
+
+import org.bytedeco.javacpp.*;
+import org.bytedeco.javacpp.annotation.*;
+
+@Platform(include="<algorithm>")
+@Namespace("std")
+public class Foo {
+  static { Loader.load(); }
+  
+  public static class Callback extends FunctionPointer {
+    static { Loader.load(); }
+    protected Callback() { allocate(); }
+    private native void allocate();
+    
+    public @Name("foo") boolean call(int a, int b) throws Exception {
+      throw new Exception("bar " + a * b);
+    }
+  }
+  
+  public static native void stable_sort(IntPointer first, IntPointer last, Callback compare);
+  public static native void sort(IntPointer first, IntPointer last, @ByVal Callback compare);
+}
+
+#include <stdio.h>
+
+class Foo {
+public: 
+  int n;
+  Foo(int n) : n(n) { }
+  virtual ~Foo() { }
+  virtual void bar() {
+    printf("Callback in C++ (n == %d)\n", n)
+  }
+};
+
+void callback(Foo *foo) {
+  foo->bar();
+}
+
+@Platform(include="Foo.h")
+public class VirtualFoo {
+  static { Loader.load(); }
+  
+  public static class Foo extends Pointer {
+  
+  }
+  
+  public static native void callback(Foo foo);
+  
+  public static void main(String[] args) {
+    Foo foo = new Foo(13);
+    Foo foo2 = new Foo(42) {
+      public void bar() {
+        System.out.println("Callback in Java (n == " + n() + ")");
+      }
+    };
+    foo.bar();
+    foo2.bar();
+    callback(foo);
+    callback(foo2);
+  }
+}
 
 ```
 
 ```sh
 java -jar javacpp.jar NativeLibrary.java -exec
 java -jar javacpp.jar VectorTest.java -exec
+java -jar javacpp.jar Processor.java -exec
+java -jar javacpp.jar Foo.java -header
+./foo
+java -jar javacpp.java VirtualFoo.java -exec
+/path/to/avian-dynamic -Xbootclasspath/a:javacpp.jar <MainClass>
+java -jar libs/javacpp.jar -classpath bin/ -classpath bin/classes/ \
+-properties <android-arm|android-x86> -Dplatform.root=/path/to/android-ndk/ \
+-Dplatform.compiler=/path/to/<arm-linux-androidabi-g++|i686-linux-android-g++> -d libs/<armeabi|x86>/
+java -jar javacpp.jar -cp classes/ -properties <ios-arm|ios-x86> -o lib
+/path/to/robovm -arch <thumbv7|x86> -os ios -cp javacpp.java:classes/ -libs classes/<ios-arm|ios-x86>/lib.o <MainClass>
 ```
 
 ```
